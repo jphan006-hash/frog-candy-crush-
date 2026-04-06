@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐸 Frog Candy Crush Deluxe</title>
+<style>
+body {
+  font-family: Arial;
+  background: linear-gradient(#a8e6cf, #56c596);
+  text-align: center;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 60px);
+  gap: 8px;
+  justify-content: center;
+}
+.tile {
+  width: 60px;
+  height: 60px;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .2s;
+}
+.tile.selected { background:#b2f2bb; transform: scale(1.1);} 
+#topbar { margin-bottom:10px; }
+button { padding:8px 12px; border:none; border-radius:8px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<h1>🐸 Frog Candy Crush Deluxe 🐸</h1>
+<div id="topbar">
+Score: <span id="score">0</span> |
+Level: <span id="level">1</span> |
+Time: <span id="time">60</span>
+</div>
+
+<div class="grid" id="grid"></div>
+<button onclick="resetGame()">Restart</button>
+
+<script>
+const SIZE = 6;
+const TYPES = ["🐸","🍬","🍓","🍋","🫐"];
+let board=[], selected=null, score=0, level=1, time=60;
+let timer;
+
+function randomTile(){return TYPES[Math.floor(Math.random()*TYPES.length)];}
+
+function createBoard(){board=[];for(let i=0;i<SIZE*SIZE;i++)board.push(randomTile());}
+
+function drawBoard(){
+const grid=document.getElementById("grid");
+grid.innerHTML="";
+board.forEach((tile,i)=>{
+let d=document.createElement("div");
+d.className="tile"+(selected===i?" selected":"");
+d.textContent=tile;
+d.onclick=()=>handleClick(i);
+grid.appendChild(d);
+});
+updateUI();
+}
+
+function updateUI(){
+document.getElementById("score").textContent=score;
+document.getElementById("level").textContent=level;
+document.getElementById("time").textContent=time;
+}
+
+function swap(i,j){[board[i],board[j]]=[board[j],board[i]];}
+
+function handleClick(i){
+if(selected===null){selected=i;}
+else{
+let diff=Math.abs(selected-i);
+if(diff===1||diff===SIZE){swap(selected,i);checkMatches();}
+selected=null;
+}
+drawBoard();
+}
+
+function checkMatches(){
+let matched=new Set();
+
+for(let i=0;i<SIZE*SIZE;i++){
+if(i%SIZE<=SIZE-3){
+let a=board[i];
+if(a&&a===board[i+1]&&a===board[i+2]){
+matched.add(i);matched.add(i+1);matched.add(i+2);
+}
+}
+if(i<SIZE*(SIZE-2)){
+let a=board[i];
+if(a&&a===board[i+SIZE]&&a===board[i+2*SIZE]){
+matched.add(i);matched.add(i+SIZE);matched.add(i+2*SIZE);
+}
+}
+}
+
+if(matched.size>0){
+score+=matched.size*10;
+
+// frog power: clear extra around 🐸
+matched.forEach(i=>{
+if(board[i]==="🐸"){
+[ i-1,i+1,i-SIZE,i+SIZE ].forEach(n=>{ if(board[n]) matched.add(n); });
+}
+});
+
+matched.forEach(i=>board[i]="");
+drop();
+setTimeout(checkMatches,300);
+}
+}
+
+function drop(){
+for(let i=SIZE*SIZE-1;i>=0;i--){
+if(board[i]===""){
+if(i-SIZE>=0){board[i]=board[i-SIZE];board[i-SIZE]="";}
+else board[i]=randomTile();
+}
+}
+}
+
+function startTimer(){
+timer=setInterval(()=>{
+time--;
+if(time<=0){clearInterval(timer);alert("Game Over! Score: "+score);} 
+updateUI();
+},1000);
+}
+
+function levelUp(){
+if(score>=level*200){level++;time+=10;}
+}
+
+function gameLoop(){
+levelUp();
+requestAnimationFrame(gameLoop);
+}
+
+function resetGame(){
+score=0;level=1;time=60;
+clearInterval(timer);
+createBoard();
+drawBoard();
+startTimer();
+}
+
+createBoard();
+drawBoard();
+startTimer();
+gameLoop();
+</script>
+
+</body>
+</html>
