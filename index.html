@@ -3,29 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🐸 Frog Candy Crush ULTRA</title>
+<title>🐸 Frog Candy Crush ULTRA+</title>
 <style>
 body {font-family:Arial;background:linear-gradient(#a8e6cf,#56c596);text-align:center;}
 .grid {display:grid;grid-template-columns:repeat(6,60px);gap:8px;justify-content:center;}
-.tile {width:60px;height:60px;font-size:26px;display:flex;align-items:center;justify-content:center;background:white;border-radius:12px;cursor:pointer;transition:.2s;}
+.tile {width:60px;height:60px;font-size:26px;display:flex;align-items:center;justify-content:center;background:white;border-radius:12px;cursor:pointer;transition:.2s;position:relative;}
 .tile.selected{background:#b2f2bb;transform:scale(1.1);} 
 .tile.bomb{background:#ff8787;} 
-.tile.laugh{animation:shake .3s;}
+.tile.laugh{animation:shake .3s;} 
 .tile.hug{background:#ffd6e0;transform:scale(1.2);} 
+.heart {position:absolute;font-size:14px;animation:float 0.6s forwards;} 
 
-@keyframes shake{
-0%{transform:translateX(0);} 
-25%{transform:translateX(-3px);} 
-50%{transform:translateX(3px);} 
-75%{transform:translateX(-3px);} 
-100%{transform:translateX(0);} }
+@keyframes shake{0%{transform:translateX(0);}25%{transform:translateX(-3px);}50%{transform:translateX(3px);}75%{transform:translateX(-3px);}100%{transform:translateX(0);} }
+@keyframes float{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-20px);} }
 
 #topbar{margin-bottom:10px;} button{padding:8px;border:none;border-radius:8px;cursor:pointer;}
 </style>
 </head>
 <body>
 
-<h1>🐸 Frog Candy Crush ULTRA 🐸</h1>
+<h1>🐸 Frog Candy Crush ULTRA+ 🐸</h1>
 <div id="topbar">
 Score: <span id="score">0</span> |
 Level: <span id="level">1</span> |
@@ -42,26 +39,33 @@ const TYPES=["🐸","🍬","🍓","🍋","🫐","💣"];
 let board=[],selected=null,score=0,level=1,time=60,timer;
 let best=localStorage.getItem("frogBest")||0;
 
-function randomTile(){
-let r=Math.random();
-if(r<0.1)return "💣";
-return TYPES[Math.floor(Math.random()*5)];
-}
+// sounds
+const laughSound=new Audio("https://www.soundjay.com/human/sounds/laugh-1.mp3");
+const popSound=new Audio("https://www.soundjay.com/buttons/sounds/button-16.mp3");
 
+function randomTile(){return Math.random()<0.1?"💣":TYPES[Math.floor(Math.random()*5)];}
 function createBoard(){board=[];for(let i=0;i<SIZE*SIZE;i++)board.push(randomTile());}
 
 function drawBoard(hugged=[]){
 let grid=document.getElementById("grid");grid.innerHTML="";
 board.forEach((tile,i)=>{
 let d=document.createElement("div");
-let classes="tile";
-if(selected===i) classes+=" selected";
-if(tile==="💣") classes+=" bomb";
-if(hugged.includes(i)) classes+=" hug";
+let cls="tile";
+if(selected===i) cls+=" selected";
+if(tile==="💣") cls+=" bomb";
+if(hugged.includes(i)) cls+=" hug";
 
-d.className=classes;
+d.className=cls;
 d.textContent=tile;
-d.onclick=()=>handleClick(i,d);
+d.onclick=()=>handleClick(i);
+
+if(hugged.includes(i)){
+let heart=document.createElement("div");
+heart.className="heart";
+heart.textContent="💖";
+d.appendChild(heart);
+}
+
 grid.appendChild(d);
 });
 updateUI();
@@ -76,20 +80,23 @@ document.getElementById("best").textContent=best;
 
 function swap(i,j){[board[i],board[j]]=[board[j],board[i]];}
 
-function laughAnimation(el){
-el.classList.add("laugh");
-setTimeout(()=>el.classList.remove("laugh"),300);
+function laughTiles(i,j){
+let tiles=document.querySelectorAll(".tile");
+[tiles[i],tiles[j]].forEach(t=>{
+if(t){t.classList.add("laugh");}
+});
+laughSound.currentTime=0;laughSound.play();
+setTimeout(()=>{
+[tiles[i],tiles[j]].forEach(t=>t&&t.classList.remove("laugh"));
+},300);
 }
 
-function handleClick(i,el){
+function handleClick(i){
 if(selected===null){selected=i;}
 else{
 let diff=Math.abs(selected-i);
 if(diff===1||diff===SIZE){
-let tiles=document.querySelectorAll(".tile");
-laughAnimation(tiles[selected]);
-laughAnimation(tiles[i]);
-
+laughTiles(selected,i);
 swap(selected,i);
 checkMatches();
 }
@@ -110,26 +117,22 @@ let matched=new Set();
 for(let i=0;i<SIZE*SIZE;i++){
 if(i%SIZE<=SIZE-3){
 let a=board[i];
-if(a&&a===board[i+1]&&a===board[i+2]){
-matched.add(i);matched.add(i+1);matched.add(i+2);
-}
+if(a&&a===board[i+1]&&a===board[i+2]) matched.add(i),matched.add(i+1),matched.add(i+2);
 }
 if(i<SIZE*(SIZE-2)){
 let a=board[i];
-if(a&&a===board[i+SIZE]&&a===board[i+2*SIZE]){
-matched.add(i);matched.add(i+SIZE);matched.add(i+2*SIZE);
-}
+if(a&&a===board[i+SIZE]&&a===board[i+2*SIZE]) matched.add(i),matched.add(i+SIZE),matched.add(i+2*SIZE);
 }
 }
 
 if(matched.size>0){
 score+=matched.size*15;
+popSound.currentTime=0;popSound.play();
 
 matched.forEach(i=>{
 if(board[i]==="🐸"||board[i]==="💣") explode(i,matched);
 });
 
-// show hugging before clearing
 let hugList=[...matched];
 drawBoard(hugList);
 
